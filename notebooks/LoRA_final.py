@@ -93,6 +93,8 @@ print_trainable_parameters(lora_model)
 # =====================================
 
 block_size = 128
+
+# Tokenize all combined conversation texts
 tokenized_data = tokenizer(
     combined_texts,
     truncation=True,
@@ -100,7 +102,23 @@ tokenized_data = tokenizer(
     max_length=block_size,
     return_tensors="pt"
 )
-tokenized_data["labels"] = tokenized_data["input_ids"]
+
+# Copy input_ids to labels
+labels = tokenized_data["input_ids"].clone()
+
+# Mask out the context part (everything before <sep>)
+sep_token_id = tokenizer.convert_tokens_to_ids("<sep>")
+
+for i, ids in enumerate(tokenized_data["input_ids"]):
+    # Find where the <sep> token occurs
+    sep_positions = (ids == sep_token_id).nonzero(as_tuple=True)[0]
+    if len(sep_positions) > 0:
+        sep_idx = sep_positions[0].item()
+        # Mask all tokens before and including <sep>
+        labels[i, :sep_idx + 1] = -100  # these tokens won't be used for loss
+
+# Assign masked labels
+tokenized_data["labels"] = labels
 
 # =====================================
 # 5. Build Hugging Face Dataset
@@ -193,4 +211,5 @@ with torch.no_grad():
 
 print(f"User: {user_message}")
 print(f"Assistant (LoRA): {tokenizer.decode(output[0].tolist())}")
+
 
