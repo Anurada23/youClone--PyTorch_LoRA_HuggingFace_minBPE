@@ -87,6 +87,21 @@ model.to(device)
 # 3. Apply LoRA
 # =====================================
 
+def print_trainable_percentage(model):
+    total_params = 0
+    trainable_params = 0
+
+    for param in model.parameters():
+        total_params += param.numel()
+        if param.requires_grad:
+            trainable_params += param.numel()
+
+    print(f"Trainable %: {100*trainable_params/total_params:.2f}%")
+    print(f"Frozen %: {100 - 100*trainable_params/total_params:.2f}%")
+
+print_trainable_percentage(lora_model)
+
+
 from transformer.lora import get_lora_model, print_trainable_parameters
 
 lora_model = get_lora_model(
@@ -248,6 +263,7 @@ with torch.no_grad():
 
 print(f"User: {user_message}")
 print(f"Assistant (LoRA): {tokenizer.decode(output[0].tolist())}")
+
 
 
 
