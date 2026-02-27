@@ -145,6 +145,31 @@ split_dataset = dataset.train_test_split(test_size=0.1, seed=42)
 train_dataset = split_dataset["train"]
 eval_dataset = split_dataset["test"]
 
+
+
+import math
+
+def compute_metrics(eval_pred):
+    logits, labels = eval_pred
+
+    # Shift logits and labels for GPT-style causal LM
+    shift_logits = torch.tensor(logits[:, :-1, :])
+    shift_labels = torch.tensor(labels[:, 1:])
+
+    loss_fct = torch.nn.CrossEntropyLoss(ignore_index=-100)
+    loss = loss_fct(
+        shift_logits.reshape(-1, shift_logits.size(-1)),
+        shift_labels.reshape(-1)
+    )
+
+    perplexity = math.exp(loss.item())
+
+    return {
+        "eval_loss": loss.item(),
+        "perplexity": perplexity
+    }
+
+
 # =====================================
 # 6. Training Arguments
 # =====================================
@@ -174,6 +199,7 @@ trainer = Trainer(
     train_dataset=train_dataset,
     eval_dataset=eval_dataset,
     tokenizer=tokenizer
+    compute_metrics=compute_metrics
 )
 
 # =====================================
@@ -222,6 +248,7 @@ with torch.no_grad():
 
 print(f"User: {user_message}")
 print(f"Assistant (LoRA): {tokenizer.decode(output[0].tolist())}")
+
 
 
 
